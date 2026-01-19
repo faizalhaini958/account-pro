@@ -16,7 +16,7 @@ import {
 import { Link, usePage } from "@inertiajs/react";
 import { PropsWithChildren, ReactNode } from "react";
 import { Toaster } from "@/Components/ui/toaster";
-import { ModeToggle } from "@/Components/ModeToggle";
+import { ThemeToggle } from "@/Components/ThemeToggle";
 import { Badge } from "@/Components/ui/badge";
 import { Button } from "@/Components/ui/button";
 import {
@@ -28,6 +28,7 @@ import {
     Package,
     ChevronRight,
     Shield,
+    FileText,
 } from "lucide-react";
 import {
     Sidebar,
@@ -76,6 +77,11 @@ function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ];
 
     const settingsItems = [
+        {
+            title: "Email Templates",
+            url: "/admin/email-templates",
+            icon: FileText,
+        },
         {
             title: "SMTP / Email",
             url: "/admin/settings/smtp",
@@ -205,7 +211,7 @@ export default function AdminLayout({ children, header }: PropsWithChildren<Admi
                             <Shield className="mr-1 h-3 w-3" />
                             Super Admin
                         </Badge>
-                        <ModeToggle />
+                        <ThemeToggle />
                     </div>
                 </header>
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-0">

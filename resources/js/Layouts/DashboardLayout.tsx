@@ -17,7 +17,7 @@ import { Head, usePage } from "@inertiajs/react"
 import { PropsWithChildren, ReactNode } from "react"
 import { Toaster } from "@/Components/ui/toaster"
 import { LanguageSwitcher } from "@/Components/LanguageSwitcher"
-import { ModeToggle } from "@/Components/ModeToggle"
+import { ThemeToggle } from "@/Components/ThemeToggle"
 
 import { useTranslation } from "react-i18next"
 import { useToast } from "@/hooks/use-toast"
@@ -78,7 +78,7 @@ export default function DashboardLayout({ children, header }: PropsWithChildren<
                         </Breadcrumb>
                     </div>
                     <div className="ml-auto px-4 flex items-center gap-2">
-                        <ModeToggle />
+                        <ThemeToggle />
                         <LanguageSwitcher />
                     </div>
                 </header>

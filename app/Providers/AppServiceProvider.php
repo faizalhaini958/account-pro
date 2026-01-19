@@ -11,12 +11,18 @@ use App\Models\JournalEntry;
 use App\Models\Quotation;
 use App\Models\ChartOfAccount;
 use App\Models\AuditLog;
+use App\Models\UserSubscription;
+use App\Models\EInvoiceDocument;
+use App\Models\PaymentTransaction;
 use App\Policies\InvoicePolicy;
 use App\Policies\PurchaseInvoicePolicy;
 use App\Policies\JournalEntryPolicy;
 use App\Policies\QuotationPolicy;
 use App\Policies\ChartOfAccountPolicy;
 use App\Policies\AuditLogPolicy;
+use App\Observers\SubscriptionObserver;
+use App\Observers\EInvoiceDocumentObserver;
+use App\Observers\PaymentTransactionObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -47,6 +53,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register observers
+        UserSubscription::observe(SubscriptionObserver::class);
+        EInvoiceDocument::observe(EInvoiceDocumentObserver::class);
+        PaymentTransaction::observe(PaymentTransactionObserver::class);
+
         // Register policies
         foreach ($this->policies as $model => $policy) {
             Gate::policy($model, $policy);

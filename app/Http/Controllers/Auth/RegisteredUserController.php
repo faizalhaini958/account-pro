@@ -75,8 +75,9 @@ class RegisteredUserController extends Controller
                 : now()->addYear();
 
             // Only create paid subscription if plan is not free
+            $subscription = null;
             if ($plan->price_monthly > 0 || $plan->price_yearly > 0) {
-                UserSubscription::create([
+                $subscription = UserSubscription::create([
                     'user_id' => $user->id,
                     'plan_id' => $plan->id,
                     'status' => 'active', // Start with active (trial logic handled by dates)
@@ -88,7 +89,7 @@ class RegisteredUserController extends Controller
                 ]);
             } else {
                 // Free plan - active immediately
-                UserSubscription::create([
+                $subscription = UserSubscription::create([
                     'user_id' => $user->id,
                     'plan_id' => $plan->id,
                     'status' => 'active',
@@ -127,6 +128,14 @@ class RegisteredUserController extends Controller
             TenantContext::set($tenant);
 
             event(new Registered($user));
+
+            // Send trial notification if on a paid plan with trial
+            if ($subscription && $subscription->trial_ends_at) {
+                $user->notify(new \App\Notifications\TrialStartedNotification(
+                    $subscription,
+                    $plan
+                ));
+            }
 
             Auth::login($user);
 
