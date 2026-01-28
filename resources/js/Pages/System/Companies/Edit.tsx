@@ -8,7 +8,7 @@ import { Switch } from '@/Components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
-import { ArrowLeft, Camera, Loader2 } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, FileSignature, Upload, Trash2 } from 'lucide-react';
 import { FormEventHandler, useRef, useState } from 'react';
 
 interface ChartOfAccount {
@@ -40,6 +40,9 @@ interface Company {
     sst_rate: number;
     logo_url: string | null;
     logo_path: string | null;
+    signature_url: string | null;
+    signature_path: string | null;
+    signature_name: string | null;
     gl_settings: {
         ar_account: string;
         sales_account: string;
@@ -56,7 +59,9 @@ interface CompanyEditProps {
 
 export default function CompanyEdit({ company, coa_assets, coa_income, coa_liabilities }: CompanyEditProps) {
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const signatureInputRef = useRef<HTMLInputElement>(null);
 
     const { data, setData, post, processing, errors } = useForm({
         name: company.name || '',
@@ -77,6 +82,9 @@ export default function CompanyEdit({ company, coa_assets, coa_income, coa_liabi
         sst_enabled: company.sst_enabled || false,
         sst_rate: company.sst_rate || 6.00,
         logo: null as File | null,
+        signature: null as File | null,
+        signature_name: company.signature_name || '',
+        remove_signature: false,
         gl_settings: {
             ar_account: company.gl_settings?.ar_account || '',
             sales_account: company.gl_settings?.sales_account || '',
@@ -95,6 +103,25 @@ export default function CompanyEdit({ company, coa_assets, coa_income, coa_liabi
             };
             reader.readAsDataURL(file);
         }
+    };
+
+    const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setData('signature', file);
+            setData('remove_signature', false);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setSignaturePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleRemoveSignature = () => {
+        setData('signature', null);
+        setData('remove_signature', true);
+        setSignaturePreview(null);
     };
 
     const submit: FormEventHandler = (e) => {
@@ -212,6 +239,13 @@ export default function CompanyEdit({ company, coa_assets, coa_income, coa_liabi
                                             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
                                         >
                                             GL Account Mapping
+                                        </TabsTrigger>
+                                        <TabsTrigger
+                                            value="signature"
+                                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+                                        >
+                                            <FileSignature className="w-4 h-4 mr-2" />
+                                            Digital Signature
                                         </TabsTrigger>
                                     </TabsList>
 
@@ -539,6 +573,90 @@ export default function CompanyEdit({ company, coa_assets, coa_income, coa_liabi
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
+                                            </div>
+                                        </div>
+                                    </TabsContent>
+
+                                    {/* Tab 4: Digital Signature */}
+                                    <TabsContent value="signature" className="space-y-6 mt-0">
+                                        <div>
+                                            <h3 className="text-lg font-medium mb-2">Company Signature</h3>
+                                            <p className="text-sm text-muted-foreground mb-6">
+                                                Upload a signature image that will appear on your invoices and quotations
+                                            </p>
+
+                                            <div className="space-y-6">
+                                                {/* Signature Preview */}
+                                                <div className="border rounded-lg p-6 bg-muted/30">
+                                                    <Label className="text-sm font-medium mb-3 block">Current Signature</Label>
+                                                    {(signaturePreview || (company.signature_url && !data.remove_signature)) ? (
+                                                        <div className="space-y-4">
+                                                            <div className="bg-white dark:bg-gray-900 border rounded-md p-4 inline-block">
+                                                                <img
+                                                                    src={signaturePreview || company.signature_url || ''}
+                                                                    alt="Signature"
+                                                                    className="max-h-24 max-w-xs object-contain"
+                                                                />
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => signatureInputRef.current?.click()}
+                                                                >
+                                                                    <Upload className="w-4 h-4 mr-2" />
+                                                                    Change
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="text-destructive hover:text-destructive"
+                                                                    onClick={handleRemoveSignature}
+                                                                >
+                                                                    <Trash2 className="w-4 h-4 mr-2" />
+                                                                    Remove
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div
+                                                            onClick={() => signatureInputRef.current?.click()}
+                                                            className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
+                                                        >
+                                                            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                                                            <p className="text-sm text-muted-foreground">
+                                                                Click to upload a signature image
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground mt-1">
+                                                                PNG, JPG up to 2MB
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                    <input
+                                                        type="file"
+                                                        ref={signatureInputRef}
+                                                        className="hidden"
+                                                        accept="image/png,image/jpeg,image/jpg"
+                                                        onChange={handleSignatureChange}
+                                                    />
+                                                </div>
+
+                                                {/* Signatory Name */}
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="signature_name">Signatory Name</Label>
+                                                    <Input
+                                                        id="signature_name"
+                                                        value={data.signature_name}
+                                                        onChange={(e) => setData('signature_name', e.target.value)}
+                                                        placeholder="Enter the name that will appear below the signature"
+                                                        className="max-w-md"
+                                                    />
+                                                    <p className="text-xs text-muted-foreground">
+                                                        This name will be displayed below the signature on documents
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
                                     </TabsContent>

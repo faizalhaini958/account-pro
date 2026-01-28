@@ -54,6 +54,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/checkout', [\App\Http\Controllers\Subscription\CheckoutController::class, 'store'])->name('checkout.store');
     Route::any('/checkout/callback/{gateway}', [\App\Http\Controllers\Subscription\PaymentCallbackController::class, 'handle'])->name('checkout.callback');
 
+    // Payment redirect routes (for user-facing redirects after payment)
+    Route::get('/subscription/payment/success', [\App\Http\Controllers\Subscription\PaymentRedirectController::class, 'success'])->name('subscription.payment.success');
+    Route::get('/subscription/payment/failed', [\App\Http\Controllers\Subscription\PaymentRedirectController::class, 'failed'])->name('subscription.payment.failed');
+
     // Company Management Routes
     Route::get('/companies', [\App\Http\Controllers\System\TenantController::class, 'index'])->name('companies.index');
     Route::post('/companies', [\App\Http\Controllers\System\TenantController::class, 'store'])->name('companies.store');
@@ -68,6 +72,12 @@ Route::middleware('auth')->group(function () {
         Route::post('quotations/{quotation}/mark-rejected', [\App\Http\Controllers\Sales\QuotationController::class, 'markAsRejected'])->name('quotations.mark-rejected');
         Route::get('quotations/{quotation}/pdf', [\App\Http\Controllers\Sales\QuotationController::class, 'pdf'])->name('quotations.pdf');
         Route::post('quotations/{quotation}/convert', [\App\Http\Controllers\Sales\QuotationController::class, 'convertToInvoice'])->name('quotations.convert');
+
+        // Quotation Signature Routes
+        Route::post('quotations/{quotation}/signature/computer', [\App\Http\Controllers\Sales\QuotationController::class, 'addComputerSignature'])->name('quotations.signature.computer');
+        Route::post('quotations/{quotation}/signature/live', [\App\Http\Controllers\Sales\QuotationController::class, 'addLiveSignature'])->name('quotations.signature.live');
+        Route::delete('quotations/{quotation}/signature', [\App\Http\Controllers\Sales\QuotationController::class, 'removeSignature'])->name('quotations.signature.remove');
+
         Route::resource('quotations', \App\Http\Controllers\Sales\QuotationController::class);
         Route::resource('delivery-orders', \App\Http\Controllers\Sales\DeliveryOrderController::class);
 
@@ -90,8 +100,21 @@ Route::middleware('auth')->group(function () {
         Route::post('invoices/{invoice}/post', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'post'])->name('invoices.post');
         Route::post('invoices/{invoice}/void', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'void'])->name('invoices.void');
         Route::get('invoices/{invoice}/payment', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'payment'])->name('invoices.payment');
+
+        // Invoice Signature Routes
+        Route::post('invoices/{invoice}/signature/computer', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'addComputerSignature'])->name('invoices.signature.computer');
+        Route::post('invoices/{invoice}/signature/live', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'addLiveSignature'])->name('invoices.signature.live');
+        Route::delete('invoices/{invoice}/signature', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'removeSignature'])->name('invoices.signature.remove');
+
         Route::resource('invoices', \App\Http\Controllers\Sales\SalesInvoiceController::class);
         Route::resource('receipts', \App\Http\Controllers\Sales\ReceiptController::class);
+
+        // Cash Transactions
+        Route::post('cash-transactions/{cashTransaction}/post', [\App\Http\Controllers\Sales\CashTransactionController::class, 'post'])->name('cash-transactions.post');
+        Route::post('cash-transactions/{cashTransaction}/void', [\App\Http\Controllers\Sales\CashTransactionController::class, 'void'])->name('cash-transactions.void');
+        Route::post('cash-transactions/{cashTransaction}/upload-receipt', [\App\Http\Controllers\Sales\CashTransactionController::class, 'uploadReceipt'])->name('cash-transactions.upload-receipt');
+        Route::delete('cash-transactions/{cashTransaction}/remove-receipt', [\App\Http\Controllers\Sales\CashTransactionController::class, 'removeReceipt'])->name('cash-transactions.remove-receipt');
+        Route::resource('cash-transactions', \App\Http\Controllers\Sales\CashTransactionController::class);
     });
 
     // Purchase Module
@@ -244,6 +267,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/users/{user}/subscription', [\App\Http\Controllers\Admin\UserManagementController::class, 'assignSubscription'])->name('users.subscription.assign');
         Route::delete('/users/{user}/subscription', [\App\Http\Controllers\Admin\UserManagementController::class, 'cancelSubscription'])->name('users.subscription.cancel');
         Route::post('/users/{user}/impersonate', [\App\Http\Controllers\Admin\UserManagementController::class, 'impersonate'])->name('users.impersonate');
+        Route::delete('/users/{user}', [\App\Http\Controllers\Admin\UserManagementController::class, 'destroy'])->name('users.destroy');
     });
 
     // Stop Impersonation (outside admin group so impersonated users can access)

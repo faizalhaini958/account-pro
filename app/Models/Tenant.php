@@ -27,7 +27,7 @@ class Tenant extends Model
         'einvoice_enabled' => 'boolean',
     ];
 
-    protected $appends = ['logo_url']; // Automatically append to JSON serialization
+    protected $appends = ['logo_url', 'signature_url']; // Automatically append to JSON serialization
 
     public function users(): BelongsToMany
     {
@@ -40,6 +40,13 @@ class Tenant extends Model
     {
         return \Illuminate\Database\Eloquent\Casts\Attribute::make(
             get: fn () => $this->logo_path ? asset('storage/' . $this->logo_path) : null,
+        );
+    }
+
+    protected function signatureUrl(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: fn () => $this->signature_path ? asset('storage/' . $this->signature_path) : null,
         );
     }
 

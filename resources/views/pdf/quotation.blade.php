@@ -42,7 +42,7 @@
                 <td width="50%" style="vertical-align: top; padding-right: 20px;">
                     <div class="text-xs uppercase font-bold text-muted mb-2">From</div>
                     <div class="font-bold text-sm" style="margin-bottom: 2px;">{{ $tenant->name ?? config('app.name') }}</div>
-                    
+
                     <div class="text-sm text-muted" style="line-height: 1.4;">
                          @if($tenant->address)
                             {!! nl2br(e($tenant->address)) !!}<br>
@@ -93,7 +93,7 @@
             <tr>
                 <td class="text-center text-muted">{{ $index + 1 }}.</td>
                 <td>
-                    <div class="font-bold">{{ $item->description }}</div> 
+                    <div class="font-bold">{{ $item->description }}</div>
                 </td>
                 <td class="text-right">{{ number_format($item->unit_price, 2) }}</td>
                 <td class="text-right">{{ $item->quantity }}</td>
@@ -101,7 +101,7 @@
             </tr>
             @endforeach
         </tbody>
-        
+
         <tfoot>
             <tr>
                 <td colspan="5" style="border-bottom: 2px solid {{ $tenant->settings['primary_color'] ?? '#475569' }};"></td>
@@ -117,14 +117,14 @@
                  <td class="text-right total-line font-bold" style="color: {{ $tenant->settings['primary_color'] ?? '#475569' }};">{{ number_format($quotation->subtotal, 2) }}</td>
             </tr>
             {{-- Add tax row if needed, strictly typically quotes might just be total but matching invoice structure --}}
-            {{-- 
+            {{--
             <tr>
                  <td class="text-right text-muted total-line">Tax:</td>
                  <td class="text-right total-line font-bold">{{ number_format($quotation->tax_amount ?? 0, 2) }}</td>
             </tr>
             --}}
         </table>
-        
+
         <div class="grand-total-box">
             <table width="100%">
                  <tr>
@@ -134,9 +134,9 @@
             </table>
         </div>
     </div>
-    
+
     <div class="clear"></div>
-    
+
     {{-- Status Stamp --}}
     @if(in_array($quotation->status, ['accepted', 'rejected', 'sent']))
         <div style="position: absolute; top: 40%; right: 10%; transform: rotate(-15deg); border: 5px solid {{ $quotation->status === 'accepted' ? '#16a34a' : '#ef4444' }}; color: {{ $quotation->status === 'accepted' ? '#16a34a' : '#ef4444' }}; padding: 10px 20px; font-size: 30px; font-weight: bold; text-transform: uppercase; opacity: 0.3;">
@@ -154,7 +154,7 @@
             </div>
         </div>
         @endif
-        
+
         @if($quotation->terms)
         <div>
              <div class="text-xs uppercase font-bold text-primary mb-2">Terms & Conditions</div>
@@ -162,6 +162,30 @@
                 {!! nl2br(e($quotation->terms)) !!}
             </div>
         </div>
+        @endif
+    </div>
+
+    {{-- Signature Section --}}
+    <div style="margin-top: 40px; text-align: right;">
+        @if($quotation->signature_type && $quotation->signature_type !== 'none')
+            <div style="display: inline-block; text-align: center;">
+                <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 5px;">
+                    @if($tenant && $tenant->signature_path)
+                        <img src="{{ public_path('storage/' . $tenant->signature_path) }}" alt="Signature" style="max-height: 60px; max-width: 200px;">
+                    @endif
+                </div>
+                @if($quotation->signature_name)
+                    <div class="font-bold text-sm">{{ $quotation->signature_name }}</div>
+                @endif
+                <div class="text-xs text-muted">Authorized Signatory</div>
+            </div>
+        @else
+            <div style="display: inline-block; text-align: center; padding: 20px; border: 1px dashed #e5e7eb; background-color: #f9fafb;">
+                <div class="text-sm text-muted" style="font-style: italic;">
+                    This is a computer-generated document.<br>
+                    No signature is required.
+                </div>
+            </div>
         @endif
     </div>
 @endsection

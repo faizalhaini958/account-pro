@@ -34,6 +34,8 @@ class Invoice extends Model
         'paid_amount' => 'decimal:2',
         'outstanding_amount' => 'decimal:2',
         'einvoice_data' => 'array',
+        'signed_at' => 'datetime',
+        'include_qr_code' => 'boolean',
     ];
 
     public function customer(): BelongsTo

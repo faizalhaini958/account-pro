@@ -21,6 +21,7 @@ import {
     ChevronRight,
     Receipt,
     Building2,
+    Banknote,
 } from "lucide-react"
 
 import {
@@ -82,6 +83,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 title: t('nav.dashboard'),
                 url: "/dashboard",
                 icon: LayoutDashboard,
+            },
+            {
+                title: t('nav.cashTransactions'),
+                url: "/sales/cash-transactions",
+                icon: Banknote,
+                permission: 'sales.view' as Permission,
             },
             {
                 title: t('nav.sales'),

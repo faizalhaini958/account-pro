@@ -90,6 +90,9 @@ class TenantController extends Controller
                 'sst_rate' => $company->sst_rate,
                 'logo_url' => $company->logo_url,
                 'logo_path' => $company->logo_path,
+                'signature_url' => $company->signature_url,
+                'signature_path' => $company->signature_path,
+                'signature_name' => $company->signature_name,
                 'gl_settings' => [
                     'ar_account' => $glSettings['ar_account'] ?? '',
                     'sales_account' => $glSettings['sales_account'] ?? '',
@@ -123,6 +126,9 @@ class TenantController extends Controller
             'country' => 'nullable|string|max:100',
             'website' => 'nullable|url|max:255',
             'logo' => 'nullable|image|max:2048', // Max 2MB
+            'signature' => 'nullable|image|max:2048', // Max 2MB
+            'signature_name' => 'nullable|string|max:255',
+            'remove_signature' => 'nullable|boolean',
             'currency' => 'nullable|string|max:3',
             'timezone' => 'nullable|string|max:50',
             'financial_year_start' => 'nullable|date',
@@ -144,6 +150,31 @@ class TenantController extends Controller
             // Store new logo
             $path = $request->file('logo')->store('logos', 'public');
             $company->logo_path = $path;
+        }
+
+        // Handle Signature Upload
+        if ($request->hasFile('signature')) {
+            // Delete old signature if exists
+            if ($company->signature_path && Storage::disk('public')->exists($company->signature_path)) {
+                Storage::disk('public')->delete($company->signature_path);
+            }
+
+            // Store new signature
+            $path = $request->file('signature')->store('signatures', 'public');
+            $company->signature_path = $path;
+        }
+
+        // Handle Signature Removal
+        if ($request->boolean('remove_signature')) {
+            if ($company->signature_path && Storage::disk('public')->exists($company->signature_path)) {
+                Storage::disk('public')->delete($company->signature_path);
+            }
+            $company->signature_path = null;
+        }
+
+        // Update signature name
+        if ($request->has('signature_name')) {
+            $company->signature_name = $validated['signature_name'];
         }
 
         // Handle GL settings

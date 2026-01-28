@@ -1,0 +1,1 @@
+function e(r){const t=typeof r=="string"?parseFloat(r):r;return new Intl.NumberFormat("en-MY",{style:"currency",currency:"MYR",minimumFractionDigits:2,maximumFractionDigits:2}).format(isNaN(t)?0:t)}export{e as f};

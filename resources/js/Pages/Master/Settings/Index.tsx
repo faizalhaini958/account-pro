@@ -9,7 +9,7 @@ import { Textarea } from "@/Components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/Components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select"
 import { useRef, useState } from "react"
-import { Loader2, Camera } from "lucide-react"
+import { Loader2, Camera, PenTool, Trash2, Upload, FileSignature } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/Components/ui/avatar"
 
 interface Props {
@@ -34,7 +34,9 @@ export default function Index({ tenant, coa_assets, coa_income, coa_liabilities 
     const { t } = useTranslation()
     const [processing, setProcessing] = useState(false)
     const [logoPreview, setLogoPreview] = useState<string | null>(null)
+    const [signaturePreview, setSignaturePreview] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const signatureInputRef = useRef<HTMLInputElement>(null)
 
     // Helper to get nested GL value safely
     const getGlSetting = (key: string, defaultVal: string) => {
@@ -55,6 +57,9 @@ export default function Index({ tenant, coa_assets, coa_income, coa_liabilities 
         sst_number: tenant.sst_number || "",
         sst_rate: tenant.sst_rate || 6.00,
         logo: null as File | null,
+        signature: null as File | null,
+        signature_name: tenant.signature_name || "",
+        remove_signature: false,
         gl_settings: {
             ar_account: getGlSetting('ar_account', '1200'),
             sales_account: getGlSetting('sales_account', '4001'),
@@ -72,6 +77,25 @@ export default function Index({ tenant, coa_assets, coa_income, coa_liabilities 
             }
             reader.readAsDataURL(file)
         }
+    }
+
+    const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            setData("signature", file)
+            setData("remove_signature", false)
+            const reader = new FileReader()
+            reader.onloadend = () => {
+                setSignaturePreview(reader.result as string)
+            }
+            reader.readAsDataURL(file)
+        }
+    }
+
+    const handleRemoveSignature = () => {
+        setData("signature", null)
+        setData("remove_signature", true)
+        setSignaturePreview(null)
     }
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -103,6 +127,13 @@ export default function Index({ tenant, coa_assets, coa_income, coa_liabilities 
                                     className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
                                 >
                                     {t('settings.accountingTax')}
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="signature"
+                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+                                >
+                                    <FileSignature className="w-4 h-4 mr-2" />
+                                    Digital Signature
                                 </TabsTrigger>
                             </TabsList>
 
@@ -349,6 +380,108 @@ export default function Index({ tenant, coa_assets, coa_income, coa_liabilities 
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </TabsContent>
+
+                                {/* Digital Signature Tab */}
+                                <TabsContent value="signature" className="mt-0 space-y-6">
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle className="flex items-center gap-2">
+                                                <FileSignature className="h-5 w-5" />
+                                                Company Signature
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Upload your company's authorized signature. This signature will be used across all invoices, quotations, and other documents created under this company.
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-6">
+                                            {/* Current Signature Display */}
+                                            {(signaturePreview || (tenant.signature_url && !data.remove_signature)) && (
+                                                <div className="border rounded-lg p-4 bg-muted/30">
+                                                    <p className="text-sm font-medium mb-3">Current Signature:</p>
+                                                    <div className="flex items-start gap-4">
+                                                        <div className="border bg-white rounded-md p-4 flex-shrink-0">
+                                                            <img
+                                                                src={signaturePreview || tenant.signature_url}
+                                                                alt="Company Signature"
+                                                                className="max-w-[250px] max-h-[100px] object-contain"
+                                                            />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            {(data.signature_name || tenant.signature_name) && (
+                                                                <p className="text-sm text-muted-foreground">
+                                                                    Authorized Signatory: <strong>{data.signature_name || tenant.signature_name}</strong>
+                                                                </p>
+                                                            )}
+                                                            <Button
+                                                                type="button"
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                className="mt-3"
+                                                                onClick={handleRemoveSignature}
+                                                            >
+                                                                <Trash2 className="w-4 h-4 mr-2" />
+                                                                Remove Signature
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Upload Section */}
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="signature-upload">
+                                                        {(signaturePreview || tenant.signature_url) && !data.remove_signature
+                                                            ? "Replace Signature"
+                                                            : "Upload Signature Image"
+                                                        }
+                                                    </Label>
+                                                    <div className="flex items-center gap-4">
+                                                        <Input
+                                                            id="signature-upload"
+                                                            type="file"
+                                                            ref={signatureInputRef}
+                                                            accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                                                            onChange={handleSignatureChange}
+                                                            className="max-w-md"
+                                                        />
+                                                    </div>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Accepted formats: PNG, JPG, SVG (max 2MB). Recommended size: 300x150 pixels with transparent background.
+                                                    </p>
+                                                    {errors.signature && <p className="text-sm text-red-500">{errors.signature}</p>}
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="signature-name">Authorized Signatory Name *</Label>
+                                                    <Input
+                                                        id="signature-name"
+                                                        type="text"
+                                                        value={data.signature_name}
+                                                        onChange={e => setData("signature_name", e.target.value)}
+                                                        placeholder="e.g., Ahmad bin Abdullah"
+                                                        className="max-w-md"
+                                                    />
+                                                    <p className="text-sm text-muted-foreground">
+                                                        This name will appear below the signature on documents.
+                                                    </p>
+                                                    {errors.signature_name && <p className="text-sm text-red-500">{errors.signature_name}</p>}
+                                                </div>
+                                            </div>
+
+                                            {/* Info Box */}
+                                            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                                                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">How it works</h4>
+                                                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                                                    <li>• This signature will be automatically applied to all documents (invoices, quotations, etc.)</li>
+                                                    <li>• Each company has its own separate signature</li>
+                                                    <li>• You can also add individual signatures per document if needed</li>
+                                                    <li>• The signature will appear in PDFs and printed documents</li>
+                                                </ul>
                                             </div>
                                         </CardContent>
                                     </Card>

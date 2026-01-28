@@ -47,6 +47,9 @@ class SettingsController extends Controller
             'country' => 'nullable|string|max:100',
             'website' => 'nullable|url|max:255',
             'logo' => 'nullable|image|max:2048', // Max 2MB
+            'signature' => 'nullable|image|mimes:png,jpg,jpeg,svg|max:2048', // Max 2MB
+            'signature_name' => 'nullable|string|max:255',
+            'remove_signature' => 'nullable|boolean',
             'sst_number' => 'nullable|string|max:50',
             'sst_rate' => 'required|numeric|min:0|max:100',
             'is_sst_registered' => 'boolean',
@@ -68,11 +71,39 @@ class SettingsController extends Controller
             if ($tenant->logo_path && Storage::disk('public')->exists($tenant->logo_path)) {
                 Storage::disk('public')->delete($tenant->logo_path);
             }
-            
+
             // Store new logo
             $path = $request->file('logo')->store('logos', 'public');
             $tenant->logo_path = $path;
             $tenant->save(); // Save immediately or part of update below (but logo_path is separate column now)
+        }
+
+        // Handle Signature Upload
+        if ($request->hasFile('signature')) {
+            // Delete old signature if exists
+            if ($tenant->signature_path && Storage::disk('public')->exists($tenant->signature_path)) {
+                Storage::disk('public')->delete($tenant->signature_path);
+            }
+
+            // Store new signature
+            $path = $request->file('signature')->store('signatures', 'public');
+            $tenant->signature_path = $path;
+            $tenant->signature_name = $validated['signature_name'] ?? null;
+            $tenant->save();
+        } elseif ($request->input('signature_name') && !$request->input('remove_signature')) {
+            // Update signature name only
+            $tenant->signature_name = $validated['signature_name'];
+            $tenant->save();
+        }
+
+        // Handle Signature Removal
+        if ($request->input('remove_signature')) {
+            if ($tenant->signature_path && Storage::disk('public')->exists($tenant->signature_path)) {
+                Storage::disk('public')->delete($tenant->signature_path);
+            }
+            $tenant->signature_path = null;
+            $tenant->signature_name = null;
+            $tenant->save();
         }
 
         $tenant->update([

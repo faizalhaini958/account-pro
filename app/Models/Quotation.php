@@ -25,6 +25,7 @@ class Quotation extends Model
         'tax_amount' => 'decimal:2',
         'shipping_amount' => 'decimal:2',
         'total' => 'decimal:2',
+        'signed_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo

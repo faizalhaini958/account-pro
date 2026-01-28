@@ -37,7 +37,7 @@
                 <td width="50%" style="vertical-align: top; padding-right: 20px;">
                     <div class="text-xs uppercase font-bold text-muted mb-2">Supplier</div>
                     <div class="font-bold text-sm" style="margin-bottom: 2px;">{{ $tenant->name ?? config('app.name') }}</div>
-                    
+
                     <div class="text-sm text-muted" style="line-height: 1.4;">
                          @if($tenant->address)
                             {!! nl2br(e($tenant->address)) !!}<br>
@@ -86,7 +86,7 @@
             <tr>
                 <td class="text-center text-muted">{{ $index + 1 }}.</td>
                 <td>
-                    <div class="font-bold">{{ $item->description }}</div> 
+                    <div class="font-bold">{{ $item->description }}</div>
                     {{-- Optional: Description details if any --}}
                 </td>
                 <td class="text-right">{{ number_format($item->unit_price, 2) }}</td>
@@ -96,7 +96,7 @@
             </tr>
             @endforeach
         </tbody>
-        
+
         {{-- Table Footer for Layout Spacing if needed --}}
         <tfoot>
             <tr>
@@ -117,7 +117,7 @@
                  <td class="text-right total-line font-bold" style="color: {{ $tenant->settings['primary_color'] ?? '#475569' }};">{{ number_format($invoice->tax_amount, 2) }}</td>
             </tr>
         </table>
-        
+
         <div class="grand-total-box">
             <table width="100%">
                  <tr>
@@ -127,17 +127,17 @@
             </table>
         </div>
     </div>
-    
+
     <div class="clear"></div>
 
     {{-- Payment Details & Notes --}}
     <div style="margin-top: 40px; width: 55%;">
-        @if(isset($qrCode))
+        @if(isset($qrCode) && ($invoice->include_qr_code ?? true))
             <div style="float: right; margin-left: 20px;">
                 <img src="{{ $qrCode }}" alt="Invoice QR" style="width: 80px; height: 80px; border: 1px solid #e2e8f0; padding: 5px;">
             </div>
         @endif
-        
+
         <div class="mb-6">
             <div class="text-xs uppercase font-bold text-primary mb-2">Payment Details</div>
             <div class="text-sm text-muted">
@@ -157,11 +157,35 @@
             </div>
         </div>
         @endif
-        
+
          {{-- Validation Info --}}
         @if(isset($eInvoiceDocument) && $eInvoiceDocument->uuid)
              <div style="margin-top: 20px; font-size: 10px; color: #16a34a;">
                 LHDN Validated: {{ Str::limit($eInvoiceDocument->uuid, 30) }}
+            </div>
+        @endif
+    </div>
+
+    {{-- Signature Section --}}
+    <div style="margin-top: 40px; text-align: right; clear: both;">
+        @if($invoice->signature_type && $invoice->signature_type !== 'none')
+            <div style="display: inline-block; text-align: center;">
+                <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 5px;">
+                    @if($tenant && $tenant->signature_path)
+                        <img src="{{ public_path('storage/' . $tenant->signature_path) }}" alt="Signature" style="max-height: 60px; max-width: 200px;">
+                    @endif
+                </div>
+                @if($invoice->signature_name)
+                    <div class="font-bold text-sm">{{ $invoice->signature_name }}</div>
+                @endif
+                <div class="text-xs text-muted">Authorized Signatory</div>
+            </div>
+        @else
+            <div style="display: inline-block; text-align: center; padding: 20px; border: 1px dashed #e5e7eb; background-color: #f9fafb;">
+                <div class="text-sm text-muted" style="font-style: italic;">
+                    This is a computer-generated document.<br>
+                    No signature is required.
+                </div>
             </div>
         @endif
     </div>

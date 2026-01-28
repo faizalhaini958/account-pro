@@ -28,6 +28,7 @@ const resources = {
 
             // Navigation
             'nav.dashboard': 'Dashboard',
+            'nav.cashTransactions': 'Cash Transactions',
             'nav.sales': 'Sales',
             'nav.purchases': 'Purchases',
             'nav.accounting': 'Accounting',
@@ -418,7 +419,6 @@ const resources = {
             'terms.changes.content': 'We may update these Terms from time to time. We will notify you of significant changes via email or through the service. Your continued use after changes indicates acceptance.',
             'terms.contact.title': '13. Contact Information',
             'terms.contact.content': 'If you have questions about these Terms, please contact us at support@bukukira.com',
-            'landing.footer.copyright': '© {{year}} BukuKira. All rights reserved.',
 
             // Inventory
             'nav.inventory': 'Inventory',
@@ -525,6 +525,27 @@ const resources = {
             'receipts.loadingInvoices': 'Loading invoices...',
             'receipts.unallocatedPayment': 'Unallocated Payment',
             'receipts.noNotes': 'No notes.',
+
+            // Sales - Cash Transactions
+            'sales.cashTransactions': 'Cash Transactions',
+            'cashTransactions.title': 'Cash Transactions',
+            'cashTransactions.create': 'New Transaction',
+            'cashTransactions.createDescription': 'Record a cash sale or expense transaction',
+            'cashTransactions.details': 'Transaction Details',
+            'cashTransactions.transactionDetails': 'Transaction Details',
+            'cashTransactions.cashSale': 'Cash Sale',
+            'cashTransactions.cashExpense': 'Cash Expense',
+            'cashTransactions.cashSales': 'Cash Sales',
+            'cashTransactions.cashExpenses': 'Cash Expenses',
+            'cashTransactions.totalSales': 'Total Sales',
+            'cashTransactions.totalExpenses': 'Total Expenses',
+            'cashTransactions.todaySales': "Today's Sales",
+            'cashTransactions.todayExpenses': "Today's Expenses",
+            'cashTransactions.uploadReceipt': 'Upload Receipt/Document',
+            'cashTransactions.dropReceipt': 'Click to upload receipt (JPG, PNG, PDF up to 5MB)',
+            'cashTransactions.uploadReceiptHint': 'Click to upload receipt (JPG, PNG, PDF)',
+            'cashTransactions.receipt': 'Receipt / Document',
+            'cashTransactions.descriptionPlaceholder': 'Enter transaction description',
 
             // Sales - Credit Notes
             'creditNotes.title': 'Credit Notes',
@@ -833,6 +854,7 @@ const resources = {
 
             // Navigation
             'nav.dashboard': 'Papan Pemuka',
+            'nav.cashTransactions': 'Transaksi Tunai',
             'nav.sales': 'Jualan',
             'nav.purchases': 'Pembelian',
             'nav.accounting': 'Perakaunan',
@@ -1327,6 +1349,27 @@ const resources = {
             'receipts.loadingInvoices': 'Memuatkan invois...',
             'receipts.unallocatedPayment': 'Bayaran Tidak Diperuntukkan',
             'receipts.noNotes': 'Tiada nota.',
+
+            // Sales - Cash Transactions
+            'sales.cashTransactions': 'Transaksi Tunai',
+            'cashTransactions.title': 'Transaksi Tunai',
+            'cashTransactions.create': 'Transaksi Baharu',
+            'cashTransactions.createDescription': 'Rekod jualan tunai atau perbelanjaan tunai',
+            'cashTransactions.details': 'Butiran Transaksi',
+            'cashTransactions.transactionDetails': 'Butiran Transaksi',
+            'cashTransactions.cashSale': 'Jualan Tunai',
+            'cashTransactions.cashExpense': 'Perbelanjaan Tunai',
+            'cashTransactions.cashSales': 'Jualan Tunai',
+            'cashTransactions.cashExpenses': 'Perbelanjaan Tunai',
+            'cashTransactions.totalSales': 'Jumlah Jualan',
+            'cashTransactions.totalExpenses': 'Jumlah Perbelanjaan',
+            'cashTransactions.todaySales': 'Jualan Hari Ini',
+            'cashTransactions.todayExpenses': 'Perbelanjaan Hari Ini',
+            'cashTransactions.uploadReceipt': 'Muat Naik Resit/Dokumen',
+            'cashTransactions.dropReceipt': 'Klik untuk muat naik resit (JPG, PNG, PDF sehingga 5MB)',
+            'cashTransactions.uploadReceiptHint': 'Klik untuk muat naik resit (JPG, PNG, PDF)',
+            'cashTransactions.receipt': 'Resit / Dokumen',
+            'cashTransactions.descriptionPlaceholder': 'Masukkan penerangan transaksi',
 
             // Sales - Credit Notes
             'creditNotes.title': 'Nota Kredit',

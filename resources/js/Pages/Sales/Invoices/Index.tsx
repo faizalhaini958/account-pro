@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next"
 import { DataTable } from "@/Components/ui/data-table"
 import { columns } from "./columns"
 import { Button } from "@/Components/ui/button"
-import { Plus, CalendarIcon, Loader2, Trash2 } from "lucide-react"
+import { Plus, CalendarIcon, Loader2, Trash2, FileSignature, QrCode, PlusCircle } from "lucide-react"
 import { useState } from "react"
 import {
     Dialog,
@@ -25,11 +25,19 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/Components/ui/table"
 import { formatCurrency } from "@/lib/format"
+import { Checkbox } from "@/Components/ui/checkbox"
+import { CreateCustomerModal } from "@/Components/Sales/CreateCustomerModal"
+import { CreateProductModal } from "@/Components/Sales/CreateProductModal"
 
 interface IndexProps {
     invoices: any
     customers: Array<{ id: number, name: string }>
     products: Array<{ id: number, name: string, retail_price: number }>
+    tenant: {
+        id: number
+        signature_url: string | null
+        signature_name: string | null
+    }
 }
 
 interface InvoiceItem {
@@ -40,15 +48,27 @@ interface InvoiceItem {
     tax_percent: number
 }
 
-export default function Index({ invoices, customers, products }: IndexProps) {
+export default function Index({ invoices, customers, products, tenant }: IndexProps) {
     const { t } = useTranslation()
     const [open, setOpen] = useState(false)
+
+    // Manage customers list locally to support adding new ones
+    const [customersList, setCustomersList] = useState(customers)
+    const [showCreateCustomerModal, setShowCreateCustomerModal] = useState(false)
+
+    // Manage products list locally to support adding new ones
+    const [productsList, setProductsList] = useState(products)
+    const [showCreateProductModal, setShowCreateProductModal] = useState(false)
+    const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null)
+
     const { data, setData, post, processing, errors, reset } = useForm({
         customer_id: "",
         reference_number: "",
         date: new Date(),
         due_date: new Date(),
         notes: "",
+        include_signature: false,
+        include_qr_code: true,
         items: [
             { product_id: "", description: "", quantity: 1, unit_price: 0, tax_percent: 0 }
         ] as InvoiceItem[]
@@ -71,7 +91,12 @@ export default function Index({ invoices, customers, products }: IndexProps) {
         const newItems = [...data.items]
 
         if (field === 'product_id') {
-            const product = products.find(p => p.id.toString() === value)
+            if (value === '_new_') {
+                setCurrentItemIndex(index)
+                setShowCreateProductModal(true)
+                return
+            }
+            const product = productsList.find(p => p.id.toString() === value)
             if (product) {
                 newItems[index] = {
                     ...newItems[index],
@@ -110,9 +135,47 @@ export default function Index({ invoices, customers, products }: IndexProps) {
         })
     }
 
+    const handleCustomerCreated = (newCustomer: any) => {
+        setCustomersList(prev => [...prev, newCustomer])
+        setData("customer_id", newCustomer.id.toString())
+        setShowCreateCustomerModal(false)
+    }
+
+    const handleProductCreated = (newProduct: any) => {
+        setProductsList(prev => [...prev, newProduct])
+        // If we know which item row triggered the modal, auto-select the new product
+        if (currentItemIndex !== null) {
+            const newItems = [...data.items]
+            newItems[currentItemIndex] = {
+                ...newItems[currentItemIndex],
+                product_id: newProduct.id.toString(),
+                description: newProduct.name,
+                unit_price: newProduct.retail_price || 0
+            }
+            setData("items", newItems)
+        }
+        setShowCreateProductModal(false)
+        setCurrentItemIndex(null)
+    }
+
     return (
         <DashboardLayout header={t('invoices.title')}>
             <Head title={t('invoices.title')} />
+
+            <CreateCustomerModal
+                open={showCreateCustomerModal}
+                onOpenChange={setShowCreateCustomerModal}
+                onSuccess={handleCustomerCreated}
+            />
+
+            <CreateProductModal
+                open={showCreateProductModal}
+                onOpenChange={(open) => {
+                    setShowCreateProductModal(open)
+                    if (!open) setCurrentItemIndex(null)
+                }}
+                onSuccess={handleProductCreated}
+            />
 
             <div className="flex-1 space-y-4 p-8 pt-6">
                 <div className="flex items-center justify-between space-y-2">
@@ -138,13 +201,25 @@ export default function Index({ invoices, customers, products }: IndexProps) {
                                             <Label htmlFor="customer_id">{t('sales.customer')}</Label>
                                             <Select
                                                 value={data.customer_id}
-                                                onValueChange={(val) => setData("customer_id", val)}
+                                                onValueChange={(val) => {
+                                                    if (val === '_new_') {
+                                                        setShowCreateCustomerModal(true)
+                                                    } else {
+                                                        setData("customer_id", val)
+                                                    }
+                                                }}
                                             >
                                                 <SelectTrigger>
                                                     <SelectValue placeholder={t('user.selectCompany')} />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {customers?.map((customer) => (
+                                                    <SelectItem value="_new_" className="text-primary font-medium bg-primary/10 hover:bg-primary/20 cursor-pointer">
+                                                        <span className="flex items-center">
+                                                            <PlusCircle className="w-4 h-4 mr-2" />
+                                                            {t('customers.new')}
+                                                        </span>
+                                                    </SelectItem>
+                                                    {customersList?.map((customer) => (
                                                         <SelectItem key={customer.id} value={customer.id.toString()}>
                                                             {customer.name}
                                                         </SelectItem>
@@ -226,7 +301,13 @@ export default function Index({ invoices, customers, products }: IndexProps) {
                                                                     <SelectValue placeholder="Select" />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
-                                                                    {products?.map((p) => (
+                                                                    <SelectItem value="_new_" className="text-primary font-medium bg-primary/10 hover:bg-primary/20 cursor-pointer">
+                                                                        <span className="flex items-center">
+                                                                            <PlusCircle className="w-4 h-4 mr-2" />
+                                                                            {t('products.new')}
+                                                                        </span>
+                                                                    </SelectItem>
+                                                                    {productsList?.map((p) => (
                                                                         <SelectItem key={p.id} value={p.id.toString()}>
                                                                             {p.name}
                                                                         </SelectItem>
@@ -305,6 +386,66 @@ export default function Index({ invoices, customers, products }: IndexProps) {
                                             onChange={(e) => setData("notes", e.target.value)}
                                             placeholder="Terms and conditions..."
                                         />
+                                    </div>
+
+                                    {/* Signature Option */}
+                                    {tenant?.signature_url && (
+                                        <div className="border rounded-lg p-4 bg-muted/30">
+                                            <div className="flex items-start space-x-3">
+                                                <Checkbox
+                                                    id="include_signature"
+                                                    checked={data.include_signature}
+                                                    onCheckedChange={(checked) => setData("include_signature", checked as boolean)}
+                                                />
+                                                <div className="grid gap-1.5 leading-none">
+                                                    <label
+                                                        htmlFor="include_signature"
+                                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2 cursor-pointer"
+                                                    >
+                                                        <FileSignature className="h-4 w-4" />
+                                                        Include Company Signature
+                                                    </label>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Add your company signature to this invoice
+                                                    </p>
+                                                    {data.include_signature && tenant.signature_url && (
+                                                        <div className="mt-2 bg-white dark:bg-gray-900 border rounded p-2 inline-block">
+                                                            <img
+                                                                src={tenant.signature_url}
+                                                                alt="Signature"
+                                                                className="max-h-12 object-contain"
+                                                            />
+                                                            {tenant.signature_name && (
+                                                                <p className="text-xs text-center mt-1">{tenant.signature_name}</p>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* QR Code Option */}
+                                    <div className="border rounded-lg p-4 bg-muted/30">
+                                        <div className="flex items-start space-x-3">
+                                            <Checkbox
+                                                id="include_qr_code"
+                                                checked={data.include_qr_code}
+                                                onCheckedChange={(checked) => setData("include_qr_code", checked as boolean)}
+                                            />
+                                            <div className="grid gap-1.5 leading-none">
+                                                <label
+                                                    htmlFor="include_qr_code"
+                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2 cursor-pointer"
+                                                >
+                                                    <QrCode className="h-4 w-4" />
+                                                    Include QR Code
+                                                </label>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Add a QR code for invoice verification (e-Invoice compliance)
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <DialogFooter>

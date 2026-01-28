@@ -18,7 +18,7 @@ class ProductController extends Controller
         $products = Product::orderBy('name')
             ->orderBy('id', 'desc')
             ->get();
-        
+
         $categories = ProductCategory::where('is_active', true)->orderBy('name')->get();
 
         return Inertia::render('Master/Products/Index', [
@@ -30,7 +30,7 @@ class ProductController extends Controller
     public function create()
     {
         $categories = ProductCategory::where('is_active', true)->orderBy('name')->get();
-        
+
         return Inertia::render('Master/Products/Create', [
             'categories' => $categories,
         ]);
@@ -50,7 +50,7 @@ class ProductController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        Product::create([
+        $product = Product::create([
             // 'tenant_id' => 1,
             'name' => $validated['name'],
             'sku' => $validated['sku'],
@@ -62,6 +62,11 @@ class ProductController extends Controller
             'current_stock' => $validated['current_stock'] ?? 0,
             'is_active' => $validated['is_active'] ?? true,
         ]);
+
+        // Return JSON if requested via AJAX (for modal forms)
+        if ($request->wantsJson()) {
+            return response()->json($product);
+        }
 
         return redirect()->route('master.products.index')
             ->with('success', 'Product created successfully.');
@@ -115,11 +120,11 @@ class ProductController extends Controller
         if ($request->has('ids')) {
             $ids = $request->input('ids');
             Product::whereIn('id', $ids)->delete();
-            
+
             return redirect()->route('master.products.index')
                 ->with('success', count($ids) . ' product(s) deleted successfully.');
         }
-        
+
         // Single delete
         $product->delete();
 

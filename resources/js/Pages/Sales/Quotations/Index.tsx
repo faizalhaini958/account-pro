@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next"
 import { DataTable } from "@/Components/ui/data-table"
 import { columns, Quotation } from "./columns"
 import { Button } from "@/Components/ui/button"
-import { PlusCircle, Plus, CalendarIcon, Loader2, Trash2 } from "lucide-react"
+import { PlusCircle, Plus, CalendarIcon, Loader2, Trash2, FileSignature } from "lucide-react"
 import { useState } from "react"
 import {
     Dialog,
@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/Components/ui/table"
 import { formatCurrency } from "@/lib/format"
+import { Checkbox } from "@/Components/ui/checkbox"
 
 interface IndexProps {
     quotations: {
@@ -33,6 +34,11 @@ interface IndexProps {
     }
     customers: Array<{ id: number, name: string, company_name?: string }>
     products: Array<{ id: number, name: string, sku: string, retail_price: string }>
+    tenant: {
+        id: number
+        signature_url: string | null
+        signature_name: string | null
+    }
 }
 
 interface QuotationItem {
@@ -43,8 +49,9 @@ interface QuotationItem {
 }
 
 import { CreateCustomerModal } from "@/Components/Sales/CreateCustomerModal"
+import { CreateProductModal } from "@/Components/Sales/CreateProductModal"
 
-export default function Index({ quotations, customers, products }: IndexProps) {
+export default function Index({ quotations, customers, products, tenant }: IndexProps) {
     const { t } = useTranslation()
     const [open, setOpen] = useState(false)
 
@@ -52,12 +59,18 @@ export default function Index({ quotations, customers, products }: IndexProps) {
     const [customersList, setCustomersList] = useState(customers)
     const [showCreateCustomerModal, setShowCreateCustomerModal] = useState(false)
 
+    // Manage products list locally to support adding new ones
+    const [productsList, setProductsList] = useState(products)
+    const [showCreateProductModal, setShowCreateProductModal] = useState(false)
+    const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null)
+
     const { data, setData, post, processing, errors, reset } = useForm({
         customer_id: "",
         date: new Date(),
         valid_until: undefined as Date | undefined,
         notes: "",
         terms: "",
+        include_signature: false,
         items: [
             { product_id: "", description: "", quantity: 1, unit_price: 0 }
         ] as QuotationItem[]
@@ -80,7 +93,12 @@ export default function Index({ quotations, customers, products }: IndexProps) {
         const newItems = [...data.items]
 
         if (field === 'product_id') {
-            const product = products.find(p => p.id.toString() === value)
+            if (value === '_new_') {
+                setCurrentItemIndex(index)
+                setShowCreateProductModal(true)
+                return
+            }
+            const product = productsList.find(p => p.id.toString() === value)
             if (product) {
                 newItems[index] = {
                     ...newItems[index],
@@ -122,6 +140,23 @@ export default function Index({ quotations, customers, products }: IndexProps) {
         setShowCreateCustomerModal(false)
     }
 
+    const handleProductCreated = (newProduct: any) => {
+        setProductsList(prev => [...prev, newProduct])
+        // If we know which item row triggered the modal, auto-select the new product
+        if (currentItemIndex !== null) {
+            const newItems = [...data.items]
+            newItems[currentItemIndex] = {
+                ...newItems[currentItemIndex],
+                product_id: newProduct.id.toString(),
+                description: newProduct.name,
+                unit_price: newProduct.retail_price || 0
+            }
+            setData("items", newItems)
+        }
+        setShowCreateProductModal(false)
+        setCurrentItemIndex(null)
+    }
+
     return (
         <DashboardLayout header={t('quotations.title')}>
             <Head title={t('quotations.title')} />
@@ -130,6 +165,15 @@ export default function Index({ quotations, customers, products }: IndexProps) {
                 open={showCreateCustomerModal}
                 onOpenChange={setShowCreateCustomerModal}
                 onSuccess={handleCustomerCreated}
+            />
+
+            <CreateProductModal
+                open={showCreateProductModal}
+                onOpenChange={(open) => {
+                    setShowCreateProductModal(open)
+                    if (!open) setCurrentItemIndex(null)
+                }}
+                onSuccess={handleProductCreated}
             />
 
             <div className="flex-1 space-y-4 p-8 pt-6">
@@ -273,9 +317,15 @@ export default function Index({ quotations, customers, products }: IndexProps) {
                                                                     <SelectValue placeholder={t('common.search')} />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
-                                                                    {products?.map((p) => (
+                                                                    <SelectItem value="_new_" className="text-primary font-medium bg-primary/10 hover:bg-primary/20 cursor-pointer">
+                                                                        <span className="flex items-center">
+                                                                            <PlusCircle className="w-4 h-4 mr-2" />
+                                                                            {t('products.new')}
+                                                                        </span>
+                                                                    </SelectItem>
+                                                                    {productsList?.map((p) => (
                                                                         <SelectItem key={p.id} value={p.id.toString()}>
-                                                                            {p.sku}
+                                                                            {p.sku || p.name}
                                                                         </SelectItem>
                                                                     ))}
                                                                 </SelectContent>
@@ -349,6 +399,43 @@ export default function Index({ quotations, customers, products }: IndexProps) {
                                             />
                                         </div>
                                     </div>
+
+                                    {/* Signature Option */}
+                                    {tenant?.signature_url && (
+                                        <div className="border rounded-lg p-4 bg-muted/30">
+                                            <div className="flex items-start space-x-3">
+                                                <Checkbox
+                                                    id="include_signature"
+                                                    checked={data.include_signature}
+                                                    onCheckedChange={(checked) => setData("include_signature", checked as boolean)}
+                                                />
+                                                <div className="grid gap-1.5 leading-none">
+                                                    <label
+                                                        htmlFor="include_signature"
+                                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2 cursor-pointer"
+                                                    >
+                                                        <FileSignature className="h-4 w-4" />
+                                                        Include Company Signature
+                                                    </label>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Add your company signature to this quotation
+                                                    </p>
+                                                    {data.include_signature && tenant.signature_url && (
+                                                        <div className="mt-2 bg-white dark:bg-gray-900 border rounded p-2 inline-block">
+                                                            <img
+                                                                src={tenant.signature_url}
+                                                                alt="Signature"
+                                                                className="max-h-12 object-contain"
+                                                            />
+                                                            {tenant.signature_name && (
+                                                                <p className="text-xs text-center mt-1">{tenant.signature_name}</p>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <DialogFooter>
                                         <Button type="button" variant="outline" onClick={() => setOpen(false)}>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Sales;
 use App\Http\Controllers\Controller;
 use App\Models\Quotation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class QuotationController extends Controller
@@ -20,10 +21,17 @@ class QuotationController extends Controller
         $customers = \App\Models\Customer::orderBy('name')->select('id', 'name', 'company_name', 'email')->get();
         $products = \App\Models\Product::where('is_active', true)->orderBy('name')->select('id', 'name', 'sku', 'retail_price', 'unit_id')->get();
 
+        $tenant = auth()->user()->currentTenant;
+
         return Inertia::render('Sales/Quotations/Index', [
             'quotations' => $quotations,
             'customers' => $customers,
             'products' => $products,
+            'tenant' => [
+                'id' => $tenant->id,
+                'signature_url' => $tenant->signature_url,
+                'signature_name' => $tenant->signature_name,
+            ],
         ]);
     }
 
@@ -55,9 +63,10 @@ class QuotationController extends Controller
             'items.*.product_id' => 'nullable|exists:products,id',
             'notes' => 'nullable|string',
             'terms' => 'nullable|string',
+            'include_signature' => 'nullable|boolean',
         ]);
 
-        return \DB::transaction(function () use ($validated, $numberingService) {
+        return \DB::transaction(function () use ($validated, $numberingService, $request) {
             // Generate number
             $prefix = 'QT-' . date('Y') . '-';
             $number = $numberingService->generate('quotation', $prefix, 4);
@@ -92,6 +101,20 @@ class QuotationController extends Controller
                 'status' => 'draft',
             ]);
 
+            // Handle signature if requested
+            if ($request->boolean('include_signature')) {
+                $tenant = auth()->user()->currentTenant;
+                if ($tenant->signature_path) {
+                    $signatureUrl = asset('storage/' . $tenant->signature_path);
+                    $quotation->update([
+                        'signature_type' => 'computer_generated',
+                        'signature_data' => $signatureUrl,
+                        'signature_name' => $tenant->signature_name ?? '',
+                        'signed_at' => now(),
+                    ]);
+                }
+            }
+
             $quotation->items()->createMany($itemsData);
 
             return redirect()->route('sales.quotations.index')
@@ -103,8 +126,15 @@ class QuotationController extends Controller
     {
         $this->authorize('sales.view');
 
+        $tenant = $quotation->tenant;
+
         return Inertia::render('Sales/Quotations/Show', [
             'quotation' => $quotation->load(['customer', 'items']),
+            'tenant' => [
+                'id' => $tenant->id,
+                'signature_url' => $tenant->signature_url,
+                'signature_name' => $tenant->signature_name,
+            ],
         ]);
     }
 
@@ -303,5 +333,81 @@ class QuotationController extends Controller
             return redirect()->route('sales.invoices.index') // Redirect to invoices index (or edit page if available)
                 ->with('success', 'Quotation converted to Invoice ' . $invoiceNumber);
         });
+    }
+
+    /**
+     * Add computer-generated signature to quotation
+     */
+    public function addComputerSignature(Request $request, Quotation $quotation)
+    {
+        $this->authorize('sales.edit');
+
+        $tenant = $quotation->tenant;
+
+        // Check if company has a signature
+        if (!$tenant->signature_path) {
+            return back()->with('error', 'No company signature found. Please upload a signature in Company Settings.');
+        }
+
+        // Use company signature
+        $signatureUrl = asset('storage/' . $tenant->signature_path);
+
+        $quotation->update([
+            'signature_type' => 'computer_generated',
+            'signature_data' => $signatureUrl,
+            'signature_name' => $tenant->signature_name ?? '',
+            'signed_at' => now(),
+        ]);
+
+        return back()->with('success', 'Signature added successfully');
+    }
+
+    /**
+     * Add live signature to quotation
+     */
+    public function addLiveSignature(Request $request, Quotation $quotation)
+    {
+        $this->authorize('sales.edit');
+
+        $request->validate([
+            'signature_data' => 'required|string',
+            'signature_name' => 'required|string|max:255',
+        ]);
+
+        // Remove old signature file if it was computer-generated
+        if ($quotation->signature_type === 'computer_generated' && $quotation->signature_data) {
+            Storage::disk('public')->delete($quotation->signature_data);
+        }
+
+        $quotation->update([
+            'signature_type' => 'live',
+            'signature_data' => $request->signature_data,
+            'signature_name' => $request->signature_name,
+            'signed_at' => now(),
+        ]);
+
+        return back()->with('success', 'Document signed successfully');
+    }
+
+    /**
+     * Remove signature from quotation
+     */
+    public function removeSignature(Quotation $quotation)
+    {
+        $this->authorize('sales.edit');
+
+        // Delete file if computer-generated
+        if ($quotation->signature_type === 'computer_generated' && $quotation->signature_data) {
+            Storage::disk('public')->delete($quotation->signature_data);
+        }
+
+        $quotation->update([
+            'signature_type' => 'none',
+            'signature_data' => null,
+            'signature_name' => null,
+            'signed_at' => null,
+        ]);
+
+        return back()->with('success', 'Signature removed successfully');
     }
 }

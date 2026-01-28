@@ -1,19 +1,48 @@
 import DashboardLayout from "@/Layouts/DashboardLayout"
-import { Head, Link } from "@inertiajs/react"
+import { Head, Link, router } from "@inertiajs/react"
 import { Button } from "@/Components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/Components/ui/card"
 import { formatCurrency } from "@/lib/format"
 import { format } from "date-fns"
 import { Separator } from "@/Components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/Components/ui/table"
-import { ArrowLeft, Download, FileText, Send } from "lucide-react"
+import { ArrowLeft, Download, FileText, Send, FileSignature, Trash2 } from "lucide-react"
 import { Badge } from "@/Components/ui/badge"
+import { useState } from "react"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/Components/ui/dialog"
 
 interface Props {
     invoice: any
+    tenant: any
 }
 
-export default function Show({ invoice }: Props) {
+export default function Show({ invoice, tenant }: Props) {
+    const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
+    const [processing, setProcessing] = useState(false);
+
+    const handleAddCompanySignature = () => {
+        setProcessing(true);
+        router.post(route('sales.invoices.signature.computer', invoice.id), {}, {
+            onFinish: () => {
+                setProcessing(false);
+                setSignatureDialogOpen(false);
+            },
+        });
+    };
+
+    const handleRemoveSignature = () => {
+        if (confirm('Are you sure you want to remove the signature?')) {
+            router.delete(route('sales.invoices.signature.remove', invoice.id));
+        }
+    };
+
     return (
         <DashboardLayout header={`Invoice ${invoice.reference_number}`}>
             <Head title={`Invoice ${invoice.reference_number}`} />
@@ -156,6 +185,92 @@ export default function Show({ invoice }: Props) {
                             </div>
 
                             {/* TODO: Add Audit Trail / Payment History here later */}
+                        </CardContent>
+                    </Card>
+
+                    {/* Signature Card */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <FileSignature className="h-5 w-5" />
+                                Signature
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {invoice.signature_type && invoice.signature_type !== 'none' ? (
+                                <div className="space-y-3">
+                                    <div className="bg-white dark:bg-gray-900 border rounded-md p-4 text-center">
+                                        {invoice.signature_data ? (
+                                            <img
+                                                src={invoice.signature_data}
+                                                alt="Signature"
+                                                className="max-h-20 mx-auto object-contain"
+                                            />
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">Signature applied</p>
+                                        )}
+                                        {invoice.signature_name && (
+                                            <p className="text-sm font-medium mt-2">{invoice.signature_name}</p>
+                                        )}
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="w-full text-destructive hover:text-destructive"
+                                        onClick={handleRemoveSignature}
+                                    >
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        Remove Signature
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Dialog open={signatureDialogOpen} onOpenChange={setSignatureDialogOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline" className="w-full" disabled={!tenant?.signature_url}>
+                                            <FileSignature className="w-4 h-4 mr-2" />
+                                            {tenant?.signature_url ? 'Add Signature' : 'No Signature Set'}
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Add Signature</DialogTitle>
+                                            <DialogDescription>
+                                                Add your company signature to this invoice
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="space-y-4">
+                                            {tenant?.signature_url && (
+                                                <div className="border rounded-lg p-4 text-center">
+                                                    <p className="text-sm text-muted-foreground mb-2">Company Signature</p>
+                                                    <img
+                                                        src={tenant.signature_url}
+                                                        alt="Company Signature"
+                                                        className="max-h-24 mx-auto object-contain"
+                                                    />
+                                                    {tenant.signature_name && (
+                                                        <p className="text-sm font-medium mt-2">{tenant.signature_name}</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                            <Button
+                                                onClick={handleAddCompanySignature}
+                                                disabled={processing || !tenant?.signature_url}
+                                                className="w-full"
+                                            >
+                                                {processing ? 'Adding...' : 'Use Company Signature'}
+                                            </Button>
+                                            {!tenant?.signature_url && (
+                                                <p className="text-sm text-muted-foreground text-center">
+                                                    Please upload a company signature in{' '}
+                                                    <Link href={route('companies.edit', tenant?.id)} className="text-primary underline">
+                                                        Company Settings
+                                                    </Link>
+                                                </p>
+                                            )}
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+                            )}
                         </CardContent>
                     </Card>
                 </div>

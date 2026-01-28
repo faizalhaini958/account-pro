@@ -9,6 +9,7 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use App\Models\InvoiceItem;
 use App\Services\PostingService;
 use App\Services\Posting\Rules\SalesInvoicePostingRule;
@@ -45,10 +46,17 @@ class SalesInvoiceController extends Controller
         $customers = Customer::where('is_active', true)->orderBy('name')->get();
         $products = Product::where('is_active', true)->orderBy('name')->get();
 
+        $tenant = auth()->user()->currentTenant;
+
         return Inertia::render('Sales/Invoices/Index', [
             'invoices' => $invoices,
             'customers' => $customers,
             'products' => $products,
+            'tenant' => [
+                'id' => $tenant->id,
+                'signature_url' => $tenant->signature_url,
+                'signature_name' => $tenant->signature_name,
+            ],
         ]);
     }
 
@@ -90,9 +98,11 @@ class SalesInvoiceController extends Controller
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.tax_percent' => 'nullable|numeric|min:0',
+            'include_signature' => 'nullable|boolean',
+            'include_qr_code' => 'nullable|boolean',
         ]);
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $request) {
             $subtotal = 0;
             $taxAmount = 0;
 
@@ -122,6 +132,7 @@ class SalesInvoiceController extends Controller
                 'outstanding_amount' => $total,
                 'status' => 'draft',
                 'notes' => $validated['notes'],
+                'include_qr_code' => $request->boolean('include_qr_code', true),
             ]);
 
             foreach ($validated['items'] as $item) {
@@ -139,6 +150,20 @@ class SalesInvoiceController extends Controller
                     'total' => $lineTotal + $lineTax,
                     'track_inventory' => true, // Determine from product later
                 ]);
+            }
+
+            // Handle signature if requested
+            if ($request->boolean('include_signature')) {
+                $tenant = auth()->user()->currentTenant;
+                if ($tenant->signature_path) {
+                    $signatureUrl = asset('storage/' . $tenant->signature_path);
+                    $invoice->update([
+                        'signature_type' => 'computer_generated',
+                        'signature_data' => $signatureUrl,
+                        'signature_name' => $tenant->signature_name ?? '',
+                        'signed_at' => now(),
+                    ]);
+                }
             }
         });
 
@@ -331,8 +356,15 @@ class SalesInvoiceController extends Controller
     {
         $this->authorize('sales.view');
 
+        $tenant = $invoice->tenant;
+
         return Inertia::render('Sales/Invoices/Show', [
             'invoice' => $invoice->load(['customer', 'items']),
+            'tenant' => [
+                'id' => $tenant->id,
+                'signature_url' => $tenant->signature_url,
+                'signature_name' => $tenant->signature_name,
+            ],
         ]);
     }
 
@@ -379,5 +411,81 @@ class SalesInvoiceController extends Controller
             'invoice' => $invoice->load('customer'),
             'bankAccounts' => \App\Models\BankAccount::where('is_active', true)->orderBy('bank_name')->get(),
         ]);
+    }
+
+    /**
+     * Add computer-generated signature to invoice
+     */
+    public function addComputerSignature(Request $request, Invoice $invoice)
+    {
+        $this->authorize('sales.edit');
+
+        $tenant = $invoice->tenant;
+
+        // Check if company has a signature
+        if (!$tenant->signature_path) {
+            return back()->with('error', 'No company signature found. Please upload a signature in Company Settings.');
+        }
+
+        // Use company signature
+        $signatureUrl = asset('storage/' . $tenant->signature_path);
+
+        $invoice->update([
+            'signature_type' => 'computer_generated',
+            'signature_data' => $signatureUrl,
+            'signature_name' => $tenant->signature_name ?? '',
+            'signed_at' => now(),
+        ]);
+
+        return back()->with('success', 'Signature added successfully');
+    }
+
+    /**
+     * Add live signature to invoice
+     */
+    public function addLiveSignature(Request $request, Invoice $invoice)
+    {
+        $this->authorize('sales.edit');
+
+        $request->validate([
+            'signature_data' => 'required|string',
+            'signature_name' => 'required|string|max:255',
+        ]);
+
+        // Remove old signature file if it was computer-generated
+        if ($invoice->signature_type === 'computer_generated' && $invoice->signature_data) {
+            Storage::disk('public')->delete($invoice->signature_data);
+        }
+
+        $invoice->update([
+            'signature_type' => 'live',
+            'signature_data' => $request->signature_data,
+            'signature_name' => $request->signature_name,
+            'signed_at' => now(),
+        ]);
+
+        return back()->with('success', 'Document signed successfully');
+    }
+
+    /**
+     * Remove signature from invoice
+     */
+    public function removeSignature(Invoice $invoice)
+    {
+        $this->authorize('sales.edit');
+
+        // Delete file if computer-generated
+        if ($invoice->signature_type === 'computer_generated' && $invoice->signature_data) {
+            Storage::disk('public')->delete($invoice->signature_data);
+        }
+
+        $invoice->update([
+            'signature_type' => 'none',
+            'signature_data' => null,
+            'signature_name' => null,
+            'signed_at' => null,
+        ]);
+
+        return back()->with('success', 'Signature removed successfully');
     }
 }

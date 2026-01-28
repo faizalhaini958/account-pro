@@ -1,0 +1,1 @@
+import{j as o}from"./app-De9YtYVO.js";import{a as r}from"./index-sqIKGjOx.js";const e=({children:s,className:t,id:a})=>o.jsx("section",{className:r("py-12",t),id:a,children:s}),x=({children:s,className:t,id:a})=>o.jsx("div",{className:r("max-w-5xl mx-auto","p-6 sm:p-8",t),id:a,children:s});export{x as C,e as S};
